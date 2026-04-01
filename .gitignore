@@ -1,0 +1,18 @@
+# Obsidian workspace state (device-specific, do not sync)
+.obsidian/workspace.json
+.obsidian/workspace-mobile.json
+.obsidian/cache/
+
+# Obsidian plugin binaries (install via Obsidian's community plugin browser)
+.obsidian/plugins/*/main.js
+.obsidian/plugins/*/styles.css
+.obsidian/plugins/*/manifest.json
+
+# Trash folder
+.trash/
+
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
