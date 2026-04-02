@@ -239,3 +239,102 @@ adb shell monkey -p com.your.package 1
 - [Qualcomm AI Engine Direct (QNN) SDK](https://developer.qualcomm.com/software/qualcomm-neural-processing-sdk)
 - [ONNX ArgMax 算子规范](https://onnx.ai/onnx/operators/onnx__ArgMax.html)（默认输出 INT64）
 - 内部 SDK：`onnx-infer-cpp` / `onnx-infer` AAR，InferSession.cpp
+
+---
+
+## 八、后处理设计：多模型 colormap + 过滤配置（v1.1.0+）
+
+### 8.1 设计背景
+
+多模型场景下，每个模型有自己的：
+- **colormap**：各类别颜色（outline/fill RGBA）
+- **labels**：各类别名称（用作 TextAnnotation 文字）
+- **过滤规则**：`min_pixel_threshold`（最小面积）、`max_polygon_num`（保留 top-N，按面积排序）
+
+### 8.2 JSON 配置格式（与 `.onnx` 同目录）
+
+文件名约定：`{model_name}_config.json`
+
+```json
+{
+  "model_name": "ctm_b2",
+  "input_width": 512,
+  "input_height": 512,
+  "classes": [
+    {
+      "class_id": 0,
+      "label": "background",
+      "skip": true
+    },
+    {
+      "class_id": 1,
+      "label": "lesion",
+      "color": { "r": 1.0, "g": 0.27, "b": 0.0, "a": 0.9 },
+      "min_pixel_threshold": 150,
+      "max_polygon_num": 5,
+      "font_size": 14.0
+    },
+    {
+      "class_id": 2,
+      "label": "calcification",
+      "color": { "r": 0.2, "g": 0.8, "b": 1.0, "a": 0.9 },
+      "min_pixel_threshold": 50,
+      "max_polygon_num": 10,
+      "font_size": 12.0
+    }
+  ]
+}
+```
+
+| 字段 | 说明 | 默认值 |
+|------|------|--------|
+| `class_id` | 与 argmax 输出的 pixel 值对应，0=background | — |
+| `skip` | true 时跳过该类（background 永远跳过） | false |
+| `color` | outline/fill 颜色，fill alpha = color.a × 0.3 | 红色 |
+| `min_pixel_threshold` | 低于此面积（像素²）的 polygon 丢弃 | 50 |
+| `max_polygon_num` | 同类别保留 top-N（按面积降序），0=不限 | 0 |
+| `font_size` | TextAnnotation 字号（像素） | 12.0 |
+
+### 8.3 SDK 使用方式
+
+```kotlin
+val engine = InferEngine(context)
+
+// 方式一：从 JSON 文件加载（推荐，适合多模型）
+engine.configureFromJson("/sdcard/.../ctm_config.json")
+
+// 方式二：代码硬编码（适合简单场景，向后兼容）
+engine.configureStyles(listOf(
+    ClassStyle("background"),
+    ClassStyle("lesion", outlineR=1f, outlineG=0.27f, maxPolygonNum=5, minArea=150.0),
+))
+```
+
+### 8.4 后处理流程（SDK 内部 C++）
+
+```
+INT32 mask [H×W]
+    │
+    ├─ 按 class_id 分组（skip=true 的跳过）
+    │
+    ├─ [每个 class] OpenCV findContours (RETR_EXTERNAL)
+    │       │
+    │       ├─ 过滤 area < min_pixel_threshold
+    │       ├─ 按 area 降序排序
+    │       └─ 取前 max_polygon_num 个
+    │
+    └─ [每个合法 polygon]
+            ├─ approxPolyDP 简化（RDP，epsilon=2px）
+            ├─ PointsAnnotation（LINE_LOOP，outline_color，fill_color）
+            └─ TextAnnotation（text=label，position=cv::moments 重心，白字 + outline色背景）
+```
+
+### 8.5 设计决策记录
+
+| 决策 | 选择 | 理由 |
+|------|------|------|
+| JSON 解析层 | Kotlin（org.json） | 零 C++ 新依赖，Android 内置 |
+| 后处理层 | C++ AAR 内部 | 与推理共享 mask 数据，无需跨 JNI 拷贝 |
+| TextAnnotation 位置 | cv::moments 重心 | 视觉上最自然 |
+| fill 颜色 | outline × 0.3 alpha | 固定规则，减少配置项 |
+| 是否拆独立 .so | 不拆 | 后处理强依赖推理输出；未来需复用时再拆 |
