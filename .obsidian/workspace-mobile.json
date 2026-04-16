@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "生活/测试.md",
+                "file": "工作/szj/HyperSonic.md",
                 "mode": "preview",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "测试"
+              "title": "HyperSonic"
             }
           }
         ]
@@ -112,7 +112,7 @@
         "state": {
           "type": "backlink",
           "state": {
-            "file": "生活/测试.md",
+            "file": "IT/QCOMM/ORT-QNN-实战总结.md",
             "collapseAll": false,
             "extraContext": false,
             "sortOrder": "alphabetical",
@@ -131,7 +131,7 @@
         "state": {
           "type": "outgoing-link",
           "state": {
-            "file": "生活/测试.md",
+            "file": "IT/QCOMM/ORT-QNN-实战总结.md",
             "linksCollapsed": false,
             "unlinkedCollapsed": true
           },
@@ -145,7 +145,7 @@
         "state": {
           "type": "outline",
           "state": {
-            "file": "生活/测试.md",
+            "file": "IT/QCOMM/ORT-QNN-实战总结.md",
             "followCursor": false,
             "showSearch": false,
             "searchQuery": ""
@@ -170,7 +170,10 @@
   },
   "active": "be22dd3cf0168bab",
   "lastOpenFiles": [
+    "IT/QCOMM/ORT-QNN-实战总结.md",
     "生活/测试.md",
+    "IT/QCOMM",
+    "IT",
     "生活",
     "README.md"
   ]
